@@ -39,7 +39,7 @@ subroutine compute_qvar3d
   use berror, only: dssv
   use derivsmod, only: qsatg,qgues
   use control_vectors, only: cvars3d
-  use gridmod, only: lat2,lon2,nsig
+  use gridmod, only: lat2,lon2,nsig,regional
   use constants, only: zero,one,fv,r100,qmin
   use guess_grids, only: fact_tv,ntguessig,nfldsig,ges_tsen,ges_prsl,ges_qsat
   use mpeu_util, only: getindex
@@ -138,6 +138,13 @@ subroutine compute_qvar3d
         do j=1,lon2
            do i=1,lat2
               rhgues(i,j,k)=qgues(i,j,k)/qsatg(i,j,k)
+              if(regional .and. abs(ges_tsen(i,j,k,ntguessig)) > 1.0e30) then
+                rhgues(i,j,k)=0.5
+              endif
+              if(.not.abs(rhgues(i,j,k))<1000.) then
+                write(6,*)"Error: rhgues setting", rhgues(i,j,k)
+                call stop2(540)
+              endif
            end do
         end do
      end do
