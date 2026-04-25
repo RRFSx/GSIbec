@@ -56,6 +56,7 @@ end subroutine t_to_tv_ad_
 
 subroutine tv_to_t_tl_(tv,tv_tl,q,q_tl,t_tl)
 
+ use guess_grids, only: ges_tsen,ntguessig
  implicit none
  real(r_kind), intent(in   ) ::    tv(:,:,:)
  real(r_kind), intent(in   ) :: tv_tl(:,:,:)
@@ -63,7 +64,22 @@ subroutine tv_to_t_tl_(tv,tv_tl,q,q_tl,t_tl)
  real(r_kind), intent(in   ) ::  q_tl(:,:,:)
  real(r_kind), intent(inout) ::  t_tl(:,:,:)
 
- t_tl = (tv_tl*(one+epsilon*q)-tv*epsilon*q_tl)/(one+epsilon*q)**2
+ integer :: i,j,k
+
+ do k = 1, size(t_tl,3)
+   do j = 1, size(t_tl,2)
+     do i = 1, size(t_tl,1)
+ 
+       if(abs(ges_tsen(i,j,k,ntguessig)) > 1.0e30) then
+         t_tl(i,j,k) = zero
+         cycle
+       endif
+
+       t_tl(i,j,k)= (tv_tl(i,j,k)*(one+epsilon*q(i,j,k))-tv(i,j,k)*epsilon*q_tl(i,j,k))/(one+epsilon*q(i,j,k))**2
+
+     enddo
+   enddo
+ enddo
 
 end subroutine tv_to_t_tl_
 
@@ -71,6 +87,7 @@ end subroutine tv_to_t_tl_
 
 subroutine tv_to_t_ad_(tv,tv_ad,q,q_ad,t_ad)
 
+ use guess_grids, only: ges_tsen,ntguessig
  implicit none
  real(r_kind), intent(in   ) ::    tv(:,:,:)
  real(r_kind), intent(inout) :: tv_ad(:,:,:)
@@ -80,13 +97,29 @@ subroutine tv_to_t_ad_(tv,tv_ad,q,q_ad,t_ad)
 
  real(r_kind),allocatable :: temp(:,:,:)
 
+ integer :: i,j,k
+
  allocate(temp(size(t_ad,1),size(t_ad,2),size(t_ad,3)))
 
- temp = t_ad/(epsilon*q+one)
+ do k = 1, size(t_ad,3)
+   do j = 1, size(t_ad,2)
+     do i = 1, size(t_ad,1)
 
- tv_ad = tv_ad + temp
- q_ad  = q_ad  - tv*epsilon*temp/(epsilon*q+one)
- t_ad = zero
+       if(abs(ges_tsen(i,j,k,ntguessig)) > 1.0e30) then
+         tv_ad(i,j,k) = zero
+         q_ad(i,j,k) = zero
+         t_ad(i,j,k) = zero
+         cycle
+       endif
+
+       temp(i,j,k) = t_ad(i,j,k)/(epsilon*q(i,j,k)+one)
+
+       tv_ad(i,j,k) = tv_ad(i,j,k) + temp(i,j,k)
+       q_ad(i,j,k)  = q_ad(i,j,k)  - tv(i,j,k)*epsilon*temp(i,j,k)/(epsilon*q(i,j,k)+one)
+       t_ad(i,j,k) = zero
+     enddo
+   enddo
+ enddo
  
  deallocate(temp)
 
